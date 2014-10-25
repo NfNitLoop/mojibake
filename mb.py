@@ -7,10 +7,14 @@ def main(args):
 	while True:
 		i = input()
 		if not i: break
-		show(i)
+		print("input: ", i)
+		mb = mapper.bytes_to_mojibake(i)
+		print("  out: ", mb)
+		b = mapper.mojibake_to_bytes(mb)
+		i = b.decode(encoding="utf-8")
+		print("  got: ", i)
+		print()
 
-def show(m):
-	print(mapper.bytes_to_mojibake(m))
 	
 
 class MultiRange:
@@ -65,6 +69,17 @@ class Mapper:
 			else: offset = self.single_byte_offset + head[0] 
 			out += chr(self.characters[offset])
 
+		return out
+
+	def mojibake_to_bytes(self, mb):
+		out = bytearray()
+		for c in mb:
+			offset = self.characters.index(ord(c))
+			if offset >= self.single_byte_offset:
+				out.append(offset & 0xFF)
+			else:
+				out.append(offset >> 8)
+				out.append(offset & 0xFF)
 		return out
 
 
