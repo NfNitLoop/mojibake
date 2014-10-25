@@ -1,18 +1,60 @@
 #!/usr/bin/env python3
 
-from random import randint
+"""
+mb.py is a script to "mojibake"-ify binary data so that it can be copy/pasted
+across (unicode-safe) terminals. It's designed to take up less space on screen than
+base64. 
+"""
+
 import unittest
+import argparse
+import sys
+
 
 def main(args):
+	options = get_options(args)
+
+	if options.files and options.mode == "encode":
+		print(options.files)
+		# TODO
+
+	if options.mode == "interactive":
+		interactive()
+		return
+
+	if options.mode == "test":
+		# unittest tries to read sys.argv. :(
+		import sys
+		sys.argv = sys.argv[:1]
+		unittest.main()
+		return
+
+def get_options(args):
+	parser = argparse.ArgumentParser(prog="mb.py")
+	parser.add_argument("--encode", "-e", help="Encode bytes from stdin or files.", 
+		dest='mode', action='store_const', const='encode', default='encode'
+	)
+	parser.add_argument("--interactive", "-i",
+		dest='mode', action='store_const', const='interactive'
+	)
+	parser.add_argument("--test", help="run unit tests",
+		dest='mode', action='store_const', const='test'
+	)
+	parser.add_argument("files", help="A list of files to zip up. (TODO)", nargs='*')
+	return parser.parse_args(args)
+
+
+def interactive():
 	while True:
-		i = input()
+		i = input(": ")
 		if not i: break
-		print("input: ", i)
 		mb = mapper.bytes_to_mojibake(i)
-		print("  out: ", mb)
+		print(" ", mb)
 		b = mapper.mojibake_to_bytes(mb)
-		i = b.decode(encoding="utf-8")
-		print("  got: ", i)
+		out = b.decode(encoding="utf-8")
+		if out == i: continue # nothing to see.
+		# else:
+		print("ERROR! got: ", i)
 		print()
 
 	
@@ -96,8 +138,8 @@ class MojibakeTests(unittest.TestCase):
 
 		self.assertTrue(len(mapper.characters) >= min_size)
 
+	# TODO: Mapper.characters should be a 1:1 mapping.
+
 
 if __name__ == "__main__":
-	import sys
-	#unittest.main()
 	main(sys.argv[1:])
