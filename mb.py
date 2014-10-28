@@ -177,7 +177,7 @@ class Mapper:
 			yield self.bytes_to_mojibake(data)
 
 		if remainder:
-			yield self.bytes_to_mojibake(data)
+			yield self.bytes_to_mojibake(remainder)
 
 	def decode(self, data_gen):
 		"""Yield bytes (sequences) for each string yielded by data_gen."""
@@ -211,8 +211,17 @@ class MojibakeTests(unittest.TestCase):
 		min_size = 0x10100
 
 		self.assertTrue(len(mapper.characters) >= min_size)
+		print("min_size:", min_size)
+		print("chars:", len(mapper.characters))
 
-	# TODO: Mapper.characters should be a 1:1 mapping.
+	# Mapper.characters should be a 1:1 mapping.
+	def test_one_to_one(self):
+		chars = mapper.characters
+		for c in chars:
+			i = chars.index(c)
+			c2 = chars[i]
+			self.assertTrue(c == c2)
+			print(i, c, chr(c))
 
 
 if __name__ == "__main__":
