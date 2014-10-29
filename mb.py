@@ -142,11 +142,11 @@ class Mapper:
 	characters = MultiRange([
 		# http://en.wikipedia.org/wiki/Unicode_block
 		# CJK Unified Ideographs Extension B
-		range(0x20000, 0x2A6E0),
+		range(0x20000, 0x2A6D8),
 		# CJK Unified Ideographs
-		range(0x4E00, 0xA000),
+		range(0x4E00, 0x9FCD),
 		# Hangul Syllables
-		range(0xAC00, 0xD7B0),
+		range(0xAC00, 0xD7A4),
 	])
 
 	# For odd numbers of bytes, the last (single) byte will
