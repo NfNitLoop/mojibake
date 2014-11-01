@@ -9,14 +9,15 @@ base64.
 import unittest
 import argparse
 import sys
+import subprocess
 
 
 def main(args):
 	options = get_options(args)
 
 	if options.files and options.mode == "encode":
-		print(options.files)
-		# TODO
+		encode_files(options)
+		return
 
 	if options.mode == "encode":
 		encode_stdin()
@@ -76,6 +77,27 @@ def encode_stdin():
 	output = mapper.encode(data_generator(stdin))
 	for mb in output: print(mb, end="")
 	print("")
+
+def encode_files(options):
+	zg = zip_generator(options.files)
+	output = mapper.encode(zg)
+	for mb in output: print(mb, end="")
+	
+	if sys.stdout.isatty():
+		print("")
+
+def zip_generator(files):
+	"""Given a list of files, zip them and generate the output as chunks of bytes."""
+	cmd = ["zip", "--quiet", "-r", "-"] + files
+	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	for data in data_generator(p.stdout):
+		yield data
+	# Afterwards, check for errors:
+	p.poll()
+	if p.returncode != 0: 
+		raise Exception("Return code from 'zip' was {}.".format(p.returncode));
+
+
 
 def decode_stdin():
 	"""Read characters from stdin, output bytes to stdout."""
