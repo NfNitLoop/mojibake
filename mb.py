@@ -82,9 +82,7 @@ def encode_files(options):
 	zg = zip_generator(options.files)
 	output = mapper.encode(zg)
 	for mb in output: print(mb, end="")
-	
-	if sys.stdout.isatty():
-		print("")
+	print("")
 
 def zip_generator(files):
 	"""Given a list of files, zip them and generate the output as chunks of bytes."""
@@ -164,7 +162,7 @@ class Mapper:
 	characters = MultiRange([
 		# http://en.wikipedia.org/wiki/Unicode_block
 		# CJK Unified Ideographs Extension B
-		range(0x20000, 0x2A6D8),
+		range(0x20000, 0x2A6D7),
 		# CJK Unified Ideographs
 		range(0x4E00, 0x9FCD),
 		# Hangul Syllables
