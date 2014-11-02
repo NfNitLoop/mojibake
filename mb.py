@@ -10,6 +10,9 @@ import unittest
 import argparse
 import sys
 import subprocess
+import os
+
+from contextlib import contextmanager
 
 
 def main(args):
@@ -17,27 +20,27 @@ def main(args):
 
 	if options.files and options.mode == "encode":
 		encode_files(options)
-		return
 
-	if options.mode == "encode":
+	elif options.mode == "encode":
 		encode_stdin()
-		return
 
-	if options.mode == "decode":
+	elif options.mode == "decode":
 		decode_stdin()
-		return
 
-	if options.mode == "interactive":
+	elif options.mode == "unzip":
+		unzip_stdin()
+
+	elif options.mode == "interactive":
 		interactive()
-		return
 
-	if options.mode == "test":
+	elif options.mode == "test":
 		# unittest tries to read sys.argv. :(
 		import sys
 		sys.argv = sys.argv[:1]
 		unittest.main()
-		return
 
+	else:
+		raise Exception("You ... shouldn't be able to get here.")
 
 def get_options(args):
 	parser = argparse.ArgumentParser(prog="mb.py")
@@ -47,7 +50,9 @@ def get_options(args):
 	parser.add_argument("--decode", "-d", help="Decode bytes from stdin.", 
 		dest='mode', action='store_const', const='decode'
 	)
-
+	parser.add_argument("--unzip", "-u", help="Unzip bytes from stdin.", 
+		dest='mode', action='store_const', const='unzip'
+	)
 	parser.add_argument("--interactive", "-i",
 		dest='mode', action='store_const', const='interactive'
 	)
@@ -96,7 +101,6 @@ def zip_generator(files):
 		raise Exception("Return code from 'zip' was {}.".format(p.returncode));
 
 
-
 def decode_stdin():
 	"""Read characters from stdin, output bytes to stdout."""
 	stdin = sys.stdin # (characters)
@@ -108,6 +112,30 @@ def decode_stdin():
 	output = mapper.decode(stdin)
 	for data in output: 
 		stdout.write(data)
+
+def unzip_stdin():
+	"""Read characters from stdin, then unzip them."""
+
+	if sys.stdin.isatty():
+		print("Paste the mojibaked zip file. ^D to finish.")
+
+	with temp_file(suffix=".zip") as filename:
+		# zip can't unzip from a stream. Must first write to a temp file:
+		disable_stdin_line_buffering()
+		output = mapper.decode(filter_ok_chars(data_generator(sys.stdin)))
+		with open(filename, "bw") as f:
+			for data in output:
+				f.write(data)
+
+		# Now unzip!
+		subprocess.call(["unzip", "-n", filename])
+
+def disable_stdin_line_buffering():
+	"""By default, stdin is line-buffered, which makes reading a stream of characters
+	troublesome. It can block if you go too long w/o an EOL character."""
+	buf = sys.stdin.detach()
+	import io
+	sys.stdin = io.TextIOWrapper(buf, encoding=sys.stdin.encoding)
 
 
 OK_CHARS = "\n\r. "
@@ -131,6 +159,18 @@ def data_generator(data_file, chunk_bytes=4096):
 		yield data
 
 
+@contextmanager
+def temp_file(suffix):
+	"""Creates a temp file and deletes it on exit."""
+
+	from tempfile import mkstemp
+	(file_handle, filename) = mkstemp(suffix=suffix)
+	os.close(file_handle)
+
+	try: 
+		yield filename
+	finally:
+		if os.path.exists(filename): os.remove(filename)
 
 class MultiRange:
 	"""A range-like object that joins a multiple disjoint ranges."""
