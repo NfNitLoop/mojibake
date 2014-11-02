@@ -68,15 +68,14 @@ def interactive():
 	while True:
 		i = input(": ")
 		if not i: break
-		mb = mapper.bytes_to_mojibake(i)
-		print(" ", mb)
-		b = mapper.mojibake_to_bytes(mb)
-		out = b.decode(encoding="utf-8")
-		if out == i: continue # nothing to see.
-		# else:
-		print("ERROR! got: ", i)
-		print()
-
+		if mapper.is_mojibake(i): # Decode!
+			b = mapper.mojibake_to_bytes(i)
+			out = b.decode(encoding="utf-8")
+			print(" ", out)
+		else: # Encode!
+			mb = mapper.bytes_to_mojibake(i)
+			print(" ", mb)
+		
 def encode_stdin():
 	"""Read bytes from stdin, output characters to stdout."""
 	stdin = sys.stdin.buffer # (The underlying *binary* buffer)
@@ -301,6 +300,10 @@ class Mapper:
 				out.append(offset >> 8)
 				out.append(offset & 0xFF)
 		return out
+
+	def is_mojibake(self, string):
+		# Lazy, just check the first char:
+		return len(string) > 0 and ord(string[0]) in self.characters
 
 
 mapper = Mapper()
