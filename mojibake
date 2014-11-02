@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-mb.py is a script to "mojibake"-ify binary data so that it can be copy/pasted
+mojibake is a script to "mojibake"-ify binary data so that it can be copy/pasted
 across (unicode-safe) terminals. It's designed to take up less space on screen than
 base64. 
 """
@@ -44,7 +44,7 @@ def main(args):
 		raise Exception("You ... shouldn't be able to get here.")
 
 def get_options(args):
-	parser = argparse.ArgumentParser(prog="mb.py")
+	parser = argparse.ArgumentParser(prog="mojibake")
 	parser.add_argument("--encode", "-e", help="Encode bytes from stdin or files.", 
 		dest='mode', action='store_const', const='encode', default='encode'
 	)
@@ -174,9 +174,6 @@ def string_generator(stream, chunk_size=4096, stop_char='.'):
 				buf = io.StringIO()
 				buf_size = 0
 			if stop: return
-
-
-
 
 
 @contextmanager
