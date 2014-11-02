@@ -21,7 +21,7 @@ But it looks cool!
 Sample Use
 ==========
 
-Like Bas64
+Like Base64
 ----------
 
 ~~~
