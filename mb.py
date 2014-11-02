@@ -11,6 +11,7 @@ import argparse
 import sys
 import subprocess
 import os
+import io
 
 from contextlib import contextmanager
 
@@ -117,28 +118,20 @@ def unzip_stdin():
 	"""Read characters from stdin, then unzip them."""
 
 	if sys.stdin.isatty():
-		print("Paste the mojibaked zip file. ^D to finish.")
+		print("Paste the mojibaked zip file. Type '.' to finish.")
 
 	with temp_file(suffix=".zip") as filename:
 		# zip can't unzip from a stream. Must first write to a temp file:
-		disable_stdin_line_buffering()
-		output = mapper.decode(filter_ok_chars(data_generator(sys.stdin)))
+		output = mapper.decode(filter_ok_chars(string_generator(sys.stdin)))
 		with open(filename, "bw") as f:
 			for data in output:
 				f.write(data)
 
 		# Now unzip!
-		subprocess.call(["unzip", "-n", filename])
-
-def disable_stdin_line_buffering():
-	"""By default, stdin is line-buffered, which makes reading a stream of characters
-	troublesome. It can block if you go too long w/o an EOL character."""
-	buf = sys.stdin.detach()
-	import io
-	sys.stdin = io.TextIOWrapper(buf, encoding=sys.stdin.encoding)
+		subprocess.call(["unzip", filename])
 
 
-OK_CHARS = "\n\r. "
+OK_CHARS = "\n\r "
 
 def filter_ok_chars(data_gen):
 	"Remove some extra characters that might show up in stdin strings"
@@ -157,6 +150,57 @@ def data_generator(data_file, chunk_bytes=4096):
 		if len(data) == 0: break # EOF
 		#else:
 		yield data
+
+def string_generator(stream, chunk_size=4096, stop_char='.'):
+	"""Like data_generator, this generates *strings* from input.
+	Stops generating output when it encounters stop_char.
+	"""
+	with disable_terminal_buffering(stream):
+		# Note, *Python* still buffers the bytes/chars it gets.
+		# So the fact that we'll read one at a time here shouldn't be too bad?
+		# Reading more than 1 character blocks until enough are available. 
+		buf = io.StringIO()
+		buf_size = 0
+		while True:
+			c = stream.read(1)
+			stop = (not c) or c[0] == stop_char
+			if not stop: 
+				buf.write(c)
+				buf_size += 1
+			if stop or buf_size >= chunk_size:
+				value = buf.getvalue()
+				buf.close()
+				yield value
+				buf = io.StringIO()
+				buf_size = 0
+			if stop: return
+
+
+
+
+
+@contextmanager
+def disable_terminal_buffering(file_obj):
+	"""Terminal buffering can make pasting long lines block. 
+	See: http://superuser.com/questions/264407/macosx-10-6-7-cuts-off-stdin-at-1024-chars
+	"""
+	if not file_obj.isatty():
+		yield
+		return
+
+	import termios
+	fd = file_obj.fileno()
+	old = termios.tcgetattr(fd)
+	new = termios.tcgetattr(fd)
+	# Remove "canonical" mode (line buffering):
+	new[3] = new[3] & ~termios.ICANON  
+	termios.tcsetattr(fd, termios.TCSANOW, new)
+	try:
+		yield
+	finally:
+		termios.tcsetattr(fd, termios.TCSANOW, old)
+
+
 
 
 @contextmanager
@@ -197,7 +241,7 @@ class MultiRange:
 
 	
 class Mapper:
-	"""Maps a number into a set of ranges of numbers."""
+	"""Encode bytes into mojibake and back."""
 
 	characters = MultiRange([
 		# http://en.wikipedia.org/wiki/Unicode_block
@@ -250,7 +294,10 @@ class Mapper:
 		"""Given mojibake string 'mb', return a bytearray of the data it contains."""
 		out = bytearray()
 		for c in mb:
-			offset = self.characters.index(ord(c))
+			try: 
+				offset = self.characters.index(ord(c))
+			except ValueError: 
+				raise ValueError("The character '{}' is not valid mojibake.".format(c))
 			if offset >= self.single_byte_offset:
 				out.append(offset & 0xFF)
 			else:
